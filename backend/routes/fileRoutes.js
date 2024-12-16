@@ -7,11 +7,11 @@ const authenticateUser = require("../middlewares/authenticateUser");
 const File = require("../models/File");
 const User = require("../models/User");
 const openai = require("openai");
-const generateAudio = require("../utils/textToSpeech");
 
 const router = express.Router();
 
-// File Upload
+
+// File Upload Route
 router.post("/upload", authenticateUser, upload.single("file"), async (req, res) => {
   try {
     const file = req.file;
@@ -42,7 +42,7 @@ router.post("/upload", authenticateUser, upload.single("file"), async (req, res)
       originalName: file.originalname,
       uploadTime: new Date(),
       fileType,
-      content: text.substring(0, 1000),
+      content: text.substring(0, 1000), // Limit content length to 1000 characters
     };
 
     const newFile = new File(metadata);
@@ -55,11 +55,11 @@ router.post("/upload", authenticateUser, upload.single("file"), async (req, res)
   }
 });
 
+
 // Get Uploaded Files
 router.get("/", authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const files = await File.find({ userId }).sort({ uploadTime: -1 });
+    const files = await File.find({ userId: req.user.id }).sort({ uploadTime: -1 });
     res.status(200).json({ files });
   } catch (error) {
     console.error("Error fetching files:", error.message);
@@ -67,30 +67,26 @@ router.get("/", authenticateUser, async (req, res) => {
   }
 });
 
+
 // Dashboard Route
 router.get("/dashboard", authenticateUser, async (req, res) => {
-    try {
-      // Fetch uploaded files for the logged-in user
-      const files = await File.find({ userId: req.user.id }).sort({ uploadTime: -1 });
-  
-      // Fetch user subscription details
-      const user = await User.findById(req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found." });
-      }
-  
-      const subscription = {
-        isActive: user.subscription.isActive,
-        expiresAt: user.subscription.expiresAt,
-      };
-  
-      res.status(200).json({ files, subscription });
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error.message);
-      res.status(500).json({ message: "Failed to fetch dashboard data." });
-    }
-  });
+  try {
+    const files = await File.find({ userId: req.user.id }).sort({ uploadTime: -1 });
 
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const subscription = {
+      isActive: user.subscription.isActive,
+      expiresAt: user.subscription.expiresAt,
+    };
+
+    res.status(200).json({ files, subscription });
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error.message);
+    res.status(500).json({ message: "Failed to fetch dashboard data." });
+  }
+});
 
 
 // Summarize File Content
@@ -99,19 +95,20 @@ router.post("/summarize", authenticateUser, async (req, res) => {
 
   try {
     const file = await File.findById(fileId);
-    if (!file) return res.status(404).json({ message: "File not found." });
+    if (!file || !file.content) {
+      return res.status(404).json({ message: "File or content not found." });
+    }
 
     const response = await openai.createChatCompletion({
       model: "gpt-4",
       messages: [
         { role: "system", content: "You are a helpful assistant that summarizes documents." },
-        { role: "user", content: `Summarize this text: ${file.content}` },
+        { role: "user", content: `Summarize this text: ${file.content.substring(0, 3000)}` },
       ],
       max_tokens: 200,
     });
 
-    const summary = response.data.choices[0].message.content.trim();
-    res.status(200).json({ summary });
+    res.status(200).json({ summary: response.data.choices[0].message.content.trim() });
   } catch (error) {
     console.error("Summarization error:", error.message);
     res.status(500).json({ message: "Failed to summarize file content." });
@@ -119,76 +116,13 @@ router.post("/summarize", authenticateUser, async (req, res) => {
 });
 
 
-// Convert Text to Audio Script
-router.post("/text-to-audio", authenticateUser, async (req, res) => {
-  const { fileId, selectedText } = req.body;
-
-  try {
-    const file = await File.findById(fileId);
-    if (!file) return res.status(404).json({ message: "File not found." });
-
-    const text = selectedText || file.content;
-
-    const response = await openai.createChatCompletion({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a helpful assistant that generates audio scripts." },
-        { role: "user", content: `Generate an audio script for this text: ${text}` },
-      ],
-      max_tokens: 500,
-    });
-
-    const audioScript = response.data.choices[0].message.content.trim();
-    res.status(200).json({ message: "Audio script generated successfully.", audioScript });
-  } catch (error) {
-    console.error("Text-to-audio error:", error.message);
-    res.status(500).json({ message: "Failed to generate audio script." });
-  }
-});
-
-
-// Q&A Based on File Content
-router.post("/ask-question", authenticateUser, async (req, res) => {
-  const { fileId, question } = req.body;
-
-  try {
-    const file = await File.findById(fileId);
-    if (!file) return res.status(404).json({ message: "File not found." });
-
-    const response = await openai.createChatCompletion({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: "You are a helpful assistant for answering questions." },
-        { role: "user", content: `Based on this text: ${file.content}, answer this question: ${question}` },
-      ],
-      max_tokens: 200,
-    });
-
-    const answer = response.data.choices[0].message.content.trim();
-    res.status(200).json({ answer });
-  } catch (error) {
-    console.error("Q&A error:", error.message);
-    res.status(500).json({ message: "Failed to answer the question." });
-  }
-});
-
-//audio generation
-router.post("/generate-audio", authenticateUser, async (req, res) => {
-  const { audioScript } = req.body;
-
-  try {
-    const fileName = `audio-${Date.now()}`;
-    const filePath = await generateAudio(audioScript, fileName);
-    res.status(200).json({ message: "Audio generated successfully", filePath });
-  } catch (error) {
-    console.error("Audio generation error:", error.message);
-    res.status(500).json({ message: "Failed to generate audio" });
-  }
-});
-
-//file search
+// Search Files
 router.get("/search", authenticateUser, async (req, res) => {
   const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: "Query parameter is required for search." });
+  }
 
   try {
     const files = await File.find({
@@ -204,5 +138,30 @@ router.get("/search", authenticateUser, async (req, res) => {
 });
 
 
+// Q&A Based on File Content
+router.post("/ask-question", authenticateUser, async (req, res) => {
+  const { fileId, question } = req.body;
+
+  try {
+    const file = await File.findById(fileId);
+    if (!file || !file.content) {
+      return res.status(404).json({ message: "File or content not found." });
+    }
+
+    const response = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are a helpful assistant for answering questions." },
+        { role: "user", content: `Based on this text: ${file.content.substring(0, 3000)}, answer: ${question}` },
+      ],
+      max_tokens: 200,
+    });
+
+    res.status(200).json({ answer: response.data.choices[0].message.content.trim() });
+  } catch (error) {
+    console.error("Q&A error:", error.message);
+    res.status(500).json({ message: "Failed to answer the question." });
+  }
+});
 
 module.exports = router;

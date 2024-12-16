@@ -1,14 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import axios from 'axios';
+import axios from "axios";
 
-const BASE_URL = 'http://localhost:5000/api/user';
+const api = axios.create({
+  baseURL: "http://localhost:5000/api", 
+});
 
-export const signup = async (data: any) => {
-  try {
-    const response = await axios.post(`${BASE_URL}/signup`, data);
-    return response.data;
-  } catch (error) {
-    console.error('Signup error:', error);
-    return null;
-  }
-};
+export default api;

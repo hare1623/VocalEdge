@@ -6,9 +6,9 @@ const { sendOTP } = require("../utils/otpService");
 
 const router = express.Router();
 
-// ===================================
+
 // User Signup
-// ===================================
+
 router.post("/signup", async (req, res) => {
   const { name, email, phone, password } = req.body;
 
@@ -41,14 +41,11 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// ===================================
-// Verify OTP
-// ===================================
+
+// Verify OTP and Auto-Login
+
 router.post("/verify-otp", async (req, res) => {
   const { userId, otp } = req.body;
-
-  console.log("Verify OTP endpoint hit");
-  console.log(req.body);
 
   try {
     const user = await User.findById(userId);
@@ -65,16 +62,26 @@ router.post("/verify-otp", async (req, res) => {
     user.otpExpiresAt = undefined;
     await user.save();
 
-    res.status(200).json({ message: "User verified successfully" });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    res.status(200).json({
+      message: "User verified successfully",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error("OTP verification error:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// ===================================
+
 // Resend Otp
-// ===================================
+
 router.post("/resend-otp", async (req, res) => {
   const { userId } = req.body;
 
@@ -87,7 +94,7 @@ router.post("/resend-otp", async (req, res) => {
 
     // Generate a new OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiry
 
     // Update the user document
     user.otp = otp;
@@ -105,9 +112,9 @@ router.post("/resend-otp", async (req, res) => {
 });
 
 
-// ===================================
+
 // User Login
-// ===================================
+
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
