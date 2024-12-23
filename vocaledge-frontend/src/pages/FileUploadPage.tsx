@@ -2,8 +2,12 @@
 import React, { useState } from "react";
 import api from "../utils/api";
 import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
+
+
 
 const FileUploadPage = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -19,28 +23,36 @@ const FileUploadPage = () => {
       setMessage("Please select a file to upload.");
       return;
     }
-
+  
+    
     const formData = new FormData();
     formData.append("file", file);
-
+  
     try {
       setLoading(true);
       const token = Cookies.get("token");
+      console.log("[INFO] Initiating file upload...");
+  
       const response = await api.post("/files/upload", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
-
+  
+      console.log("[INFO] Upload successful:", response.data);
       setMessage("File uploaded successfully!");
-      console.log(response.data);
+  
+      navigate(`/file-view/${response.data.fileName}`);
     } catch (error: any) {
+      console.error("[ERROR] Upload failed:", error.response?.data || error.message);
       setMessage(error.response?.data?.message || "File upload failed.");
     } finally {
       setLoading(false);
     }
   };
+  
+  
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-6">

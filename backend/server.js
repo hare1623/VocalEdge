@@ -7,6 +7,7 @@ const errorHandler = require("./middlewares/errorHandler");
 const limiter = require("./middlewares/rateLimiter");
 const cron = require("node-cron");
 const notifyRenewal = require("./utils/subscriptionController");
+const path = require("path");
 
 dotenv.config();
 connectDB();
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use(cors());
 app.use("/api", require("./routes/index"));
 app.use("/api/webhook", bodyParser.raw({ type: "application/json" }));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(limiter);
 
 app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import api from "../utils/api";
 import Cookies from "js-cookie";
-import { Link } from "react-router-dom";
 
 interface FileData {
-  _id: string;
+  fileName: string;
   originalName: string;
   uploadTime: string;
 }
@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate(); // Use navigate hook
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -30,6 +31,7 @@ const Dashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setFiles(response.data.files);
+      console.log(files)
       setSubscription(response.data.subscription);
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error.message);
@@ -58,6 +60,11 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleFileClick = (fileName: string) => {
+    console.log(fileName , 'file name')
+    navigate(`/file-view/${fileName}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -106,8 +113,9 @@ const Dashboard = () => {
             <ul className="space-y-2">
               {files.map((file) => (
                 <li
-                  key={file._id}
-                  className="p-4 bg-white shadow rounded-lg flex justify-between items-center"
+                  key={file.fileName}
+                  className="p-4 bg-white shadow rounded-lg flex justify-between items-center cursor-pointer hover:bg-gray-100 transition"
+                  onClick={() => handleFileClick(file.fileName)}
                 >
                   <span>{file.originalName}</span>
                   <span className="text-gray-500">
@@ -120,13 +128,12 @@ const Dashboard = () => {
             <p>No files uploaded yet.</p>
           )}
 
-
-<Link
-  to="/upload"
-  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
->
-  Upload New File
-</Link>
+          <Link
+            to="/upload"
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition mt-4 inline-block"
+          >
+            Upload New File
+          </Link>
         </>
       )}
     </div>

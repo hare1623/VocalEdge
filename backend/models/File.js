@@ -5,7 +5,7 @@ const fileSchema = mongoose.Schema({
   fileName: { type: String, required: true },
   originalName: { type: String, required: true },
   uploadTime: { type: Date, default: Date.now },
-  fileType: { type: String, required: true },
+  fileType: { type: String, required: true }, 
   content: { type: String },
 });
 

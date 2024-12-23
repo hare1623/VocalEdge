@@ -6,6 +6,7 @@ import LoginPage from "../pages/LoginPage";
 import Dashboard from "../pages/Dashboard";
 import FileUploadPage from "../pages/FileUploadPage";
 import PrivateRoute from "../components/PrivateRoute";
+import FileViewPage from "../pages/FileViewPage";
 
 const AppRouter = () => {
   return (
@@ -21,6 +22,7 @@ const AppRouter = () => {
         <Route element={<PrivateRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/upload" element={<FileUploadPage />} />
+          <Route path="/file-view/:id" element={<FileViewPage />} />
         </Route>
 
         {/* Catch-All Route */}
